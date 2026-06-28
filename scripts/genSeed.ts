@@ -9,8 +9,17 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { mulberry32, generateProblem, type GeneratedProblem } from '../src/engine/generator.ts';
 
-const COUNTS: Record<number, number> = { 1: 30, 3: 26, 5: 18 };
+const COUNTS: Record<number, number> = { 1: 30, 3: 26, 5: 18, 7: 10 };
 const SEED = 20260628;
+
+// 手数ごとの生成パラメータ。長手数ほど出現率が低く 1 問あたりの試行・時間がかかるため、
+// 試行上限(maxAttempts)とリトライ上限(want * factor)を手数別に引き上げる。
+const GEN_PARAMS: Record<number, { maxAttempts: number; triesFactor: number }> = {
+  1: { maxAttempts: 12000, triesFactor: 6 },
+  3: { maxAttempts: 12000, triesFactor: 6 },
+  5: { maxAttempts: 12000, triesFactor: 6 },
+  7: { maxAttempts: 40000, triesFactor: 30 },
+};
 
 function main() {
   const rng = mulberry32(SEED);
@@ -18,14 +27,15 @@ function main() {
   const problems: GeneratedProblem[] = [];
   const start = Date.now();
 
-  for (const n of [1, 3, 5]) {
+  for (const n of [1, 3, 5, 7]) {
     const want = COUNTS[n];
+    const { maxAttempts, triesFactor } = GEN_PARAMS[n] ?? { maxAttempts: 12000, triesFactor: 6 };
     let got = 0;
     let tries = 0;
-    while (got < want && tries < want * 6) {
+    while (got < want && tries < want * triesFactor) {
       tries++;
       const t0 = Date.now();
-      const prob = generateProblem(n, rng, { maxAttempts: 12000, seen });
+      const prob = generateProblem(n, rng, { maxAttempts, seen });
       if (!prob) continue;
       problems.push(prob);
       got++;

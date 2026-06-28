@@ -4,6 +4,7 @@
 
 import type { GeneratedProblem } from '../engine/generator.ts';
 import { SEED_PROBLEMS, type SeedProblem } from '../data/seedProblems.ts';
+import { MOVE_COUNTS } from '../store/store.ts';
 
 const BUFFER_TARGET = 4; // 各手数ごとに確保したい新規問題数
 
@@ -17,7 +18,7 @@ export class ProblemSource {
   private moveCounts: number[] = [1, 3];
 
   constructor() {
-    for (const n of [1, 3, 5]) {
+    for (const n of MOVE_COUNTS) {
       this.fresh.set(n, []);
       this.seedPools.set(n, []);
     }
@@ -73,7 +74,7 @@ export class ProblemSource {
 
   // 出題する手数を選ぶ（設定された手数からランダム）
   private pickMoves(): number {
-    const cands = this.moveCounts.filter((n) => [1, 3, 5].includes(n));
+    const cands = this.moveCounts.filter((n) => (MOVE_COUNTS as readonly number[]).includes(n));
     return cands[Math.floor(Math.random() * cands.length)] ?? 1;
   }
 

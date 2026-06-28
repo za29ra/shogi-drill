@@ -1,6 +1,6 @@
 // 設定画面。手数・1日の問題数・効果音・移動ガイド・データ消去。
 
-import { getSettings, saveSettings, Settings } from '../store/store.ts';
+import { getSettings, saveSettings, Settings, MOVE_COUNTS } from '../store/store.ts';
 import { exportBackupFile, pickAndRestoreBackup } from './backup.ts';
 
 export interface SettingsViewDeps {
@@ -33,10 +33,10 @@ export class SettingsView {
     this.root.classList.add('settings');
 
     // 手数
-    const moveSec = this.section('問題の手数', 'やさしい1手から。慣れたら3手・5手に挑戦！');
+    const moveSec = this.section('問題の手数', 'やさしい1手から。慣れたら3手・5手・7手に挑戦！');
     const opts = document.createElement('div');
     opts.className = 'chip-group';
-    for (const n of [1, 3, 5]) {
+    for (const n of MOVE_COUNTS) {
       const active = s.moveCounts.includes(n);
       const chip = document.createElement('button');
       chip.className = `chip ${active ? 'chip-on' : ''}`;
