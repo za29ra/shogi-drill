@@ -31,19 +31,21 @@ html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  /* ビューポート基準を dvh に統一（100% との不一致でタブ下に死スペースが出るのを防ぐ） */
+  height: 100vh;
+  height: 100dvh;
   background: var(--bg);
   color: var(--ink);
   font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN',
     'Noto Sans JP', 'Yu Gothic', Meiryo, sans-serif;
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: none;
+  overflow: hidden;
 }
 
 #app {
-  /* 端末の表示領域ぴったりにする。iOS Safari のツールバー変動には dvh が追従する。 */
-  height: 100vh;
-  height: 100dvh;
+  /* body と同じ高さ（= 100dvh）。下端ぴったりでタブの下に余白を残さない。 */
+  height: 100%;
   display: flex;
   flex-direction: column;
   touch-action: manipulation;
@@ -1009,7 +1011,7 @@ body {
   background: none;
   border: none;
   color: #b9a886;
-  padding: 10px 0 12px;
+  padding: 7px 0 7px;
   display: flex;
   flex-direction: column;
   align-items: center;
