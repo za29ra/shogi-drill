@@ -72,7 +72,7 @@ export class SolveView {
     controls.appendChild(this.button('ヒント', 'btn-hint', () => this.showHint()));
     controls.appendChild(this.button('もう一度', 'btn-retry', () => this.restart()));
     controls.appendChild(this.button('答え', 'btn-answer', () => this.showAnswer()));
-    controls.appendChild(this.button('つぎの問題 ▶', 'btn-next', () => this.nextProblem()));
+    controls.appendChild(this.button('つぎへ ▶', 'btn-next', () => this.nextProblem()));
     this.root.appendChild(controls);
 
     const settings = getSettings();
@@ -87,6 +87,11 @@ export class SolveView {
   // 設定変更（移動ガイドのON/OFFなど）を現在の盤に即時反映
   refreshSettings(): void {
     if (this.board) this.board.setGuide(getSettings().showGuide);
+  }
+
+  // タブで再表示されたとき、盤サイズを再計算する
+  onShow(): void {
+    if (this.board) this.board.refit();
   }
 
   // 検証用（本番ビルドでは未使用）: 現在の正解手と状態を返す

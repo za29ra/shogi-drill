@@ -28,6 +28,7 @@ const RANK_LABELS = ['一', '二', '三', '四', '五', '六', '七', '八', '�
 export class BoardView {
   private root: HTMLElement;
   private boardEl!: HTMLElement;
+  private wrapEl!: HTMLElement;
   private topHandEl!: HTMLElement;
   private bottomHandEl!: HTMLElement;
   private pos: Position = new Position();
@@ -37,11 +38,20 @@ export class BoardView {
   private legalForSelection: Move[] = [];
   private lastMove: Move | null = null;
   private hintSquare: number | null = null;
+  private resizeObserver?: ResizeObserver;
 
   constructor(root: HTMLElement, opts: BoardViewOptions) {
     this.root = root;
     this.opts = opts;
     this.build();
+    // 盤を使える領域に合わせて自動フィット（端末ごとに最適化）
+    if (typeof ResizeObserver !== 'undefined') {
+      this.resizeObserver = new ResizeObserver(() => this.fitBoard());
+      this.resizeObserver.observe(this.root);
+    }
+    window.addEventListener('resize', this.fitBoard);
+    window.addEventListener('orientationchange', this.fitBoard);
+    this.scheduleFit();
   }
 
   private build(): void {
@@ -52,16 +62,43 @@ export class BoardView {
     this.topHandEl.className = 'komadai komadai-top';
     this.root.appendChild(this.topHandEl);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'board-wrap';
+    this.wrapEl = document.createElement('div');
+    this.wrapEl.className = 'board-wrap';
     this.boardEl = document.createElement('div');
     this.boardEl.className = 'board';
-    wrap.appendChild(this.boardEl);
-    this.root.appendChild(wrap);
+    this.wrapEl.appendChild(this.boardEl);
+    this.root.appendChild(this.wrapEl);
 
     this.bottomHandEl = document.createElement('div');
     this.bottomHandEl.className = 'komadai komadai-bottom';
     this.root.appendChild(this.bottomHandEl);
+  }
+
+  // 盤ビュー(board-view)の実寸から、駒台・ラベルを除いた正方形の盤サイズ(--bsz)を算出する。
+  // 全幅のコンテナと駒台の実高から計算するため、盤サイズ自身に依存せず（循環せず）、
+  // 残り領域に必ず収まる＝下部のボタンが見切れない。
+  private fitBoard = (): void => {
+    const root = this.root;
+    if (!root) return;
+    const availW = root.clientWidth;
+    // 駒台(上下)とラベル行・隙間ぶんを差し引いた高さが盤の高さ予算
+    const availH =
+      root.clientHeight - this.topHandEl.offsetHeight - this.bottomHandEl.offsetHeight - 16;
+    if (availW <= 0 || availH <= 0) return;
+    const size = Math.min(availW - 20, availH - 16);
+    const bsz = Math.max(150, Math.min(size, 560));
+    const el = document.documentElement;
+    const cur = parseFloat(el.style.getPropertyValue('--bsz')) || 0;
+    if (Math.abs(cur - bsz) > 0.5) el.style.setProperty('--bsz', `${bsz}px`);
+  };
+
+  private scheduleFit(): void {
+    requestAnimationFrame(this.fitBoard);
+  }
+
+  // 画面遷移などで再表示されたときに呼ぶ
+  refit(): void {
+    this.scheduleFit();
   }
 
   setPosition(pos: Position): void {
@@ -247,6 +284,7 @@ export class BoardView {
 
     this.renderHands();
     this.renderLabels();
+    this.scheduleFit();
   }
 
   private renderLabels(): void {

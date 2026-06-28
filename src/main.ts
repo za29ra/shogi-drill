@@ -92,6 +92,7 @@ function main(): void {
     statsEl.classList.toggle('active', name === 'stats');
     settingsEl.classList.toggle('active', name === 'settings');
     for (const [n, b] of tabButtons) b.classList.toggle('tab-on', n === name);
+    if (name === 'solve') solve.onShow(); // 盤サイズを再計算
     if (name === 'stats') stats.render(); // 最新成績で再描画
     if (name === 'settings') settings.mount();
     updateAppbar();

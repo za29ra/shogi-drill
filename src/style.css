@@ -17,8 +17,8 @@
   --good: #2e9e5b;
   --bad: #c0492e;
   --win: #e0a72b;
-  /* 盤のサイズ。画面に応じて最大を制限 */
-  --bsz: min(94vw, 62vh, 540px);
+  /* 盤のサイズ。初期値（JS が領域に合わせて再計算して上書きする） */
+  --bsz: min(90vw, 42vh, 520px);
   --pad-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
@@ -41,10 +41,13 @@ body {
 }
 
 #app {
-  min-height: 100%;
+  /* 端末の表示領域ぴったりにする。iOS Safari のツールバー変動には dvh が追従する。 */
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   touch-action: manipulation;
+  overflow: hidden;
 }
 
 /* ===== 上部バー ===== */
@@ -89,8 +92,9 @@ body {
 /* ===== コンテンツ ===== */
 .content {
   flex: 1;
+  min-height: 0; /* flex 子が縮めるように（内部スクロールの前提） */
   position: relative;
-  padding: 12px 12px var(--pad-bottom);
+  padding: 10px 10px 12px;
   overflow-y: auto;
 }
 .view {
@@ -99,6 +103,28 @@ body {
 .view.active {
   display: block;
   animation: fadein 0.18s ease;
+}
+/* 出題画面は端末内に収め、ボタンが見切れないよう盤を自動フィットさせる。 */
+.view.solve.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  gap: 4px;
+  animation: none;
+}
+.solve > .solve-head,
+.solve > .solve-msg,
+.solve > .kifu,
+.solve > .solve-controls {
+  flex: none;
+}
+.solve > .board-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  width: 100%;
+  justify-content: center;
 }
 @keyframes fadein {
   from {
@@ -113,18 +139,26 @@ body {
 
 /* ===== 盤ビュー ===== */
 .board-view {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
 }
 .board-wrap {
-  display: inline-grid;
+  /* 駒台を除いた残り領域いっぱいに広がり、盤(--bsz)は JS が領域に合わせて算出する。 */
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
   grid-template-areas: 'corner files' 'ranks board';
-  grid-template-columns: 1.3em var(--bsz);
-  grid-template-rows: 1.1em var(--bsz);
-  align-items: center;
+  grid-template-columns: 16px var(--bsz);
+  grid-template-rows: 14px var(--bsz);
+  place-content: center;
   justify-items: center;
+  align-items: center;
 }
 .file-labels {
   grid-area: files;
@@ -144,7 +178,7 @@ body {
   align-items: center;
   justify-content: center;
   color: #d9c39a;
-  font-size: calc(var(--bsz) / 26);
+  font-size: clamp(9px, 2.4vw, 13px);
   font-weight: 700;
 }
 .board {
@@ -234,15 +268,16 @@ body {
 
 /* 持ち駒（駒台） */
 .komadai {
+  flex: none;
   width: var(--bsz);
-  max-width: 94vw;
+  max-width: 96vw;
   background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 6px 8px;
+  padding: 4px 8px;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
+  min-height: 38px;
 }
 .komadai-label {
   color: #e6d4ad;
@@ -257,15 +292,16 @@ body {
   align-items: center;
 }
 .hand-piece {
+  /* 盤サイズに依存しない固定サイズ（駒台の高さを安定させ、盤の自動計算のループを防ぐ） */
   position: relative;
-  width: calc(var(--bsz) / 11);
-  height: calc(var(--bsz) / 11);
+  width: clamp(26px, 6.6vw, 38px);
+  height: clamp(26px, 6.6vw, 38px);
   cursor: pointer;
 }
 .hand-piece .piece {
   width: 100%;
   height: 100%;
-  font-size: calc(var(--bsz) / 16);
+  font-size: clamp(15px, 4vw, 22px);
 }
 .hand-piece.selected .piece {
   box-shadow: 0 0 0 3px var(--accent), inset 0 0 0 1px rgba(0, 0, 0, 0.18);
@@ -313,11 +349,11 @@ body {
   color: var(--ink);
 }
 .solve-msg {
-  min-height: 1.6em;
+  min-height: 1.4em;
   text-align: center;
   font-weight: 700;
   font-size: 15px;
-  padding: 6px 10px;
+  padding: 4px 10px;
   border-radius: 8px;
   color: #f3e7cd;
 }
@@ -338,22 +374,27 @@ body {
   text-align: center;
   color: #cdbb96;
   font-size: 13px;
-  min-height: 1.2em;
-  margin-bottom: 4px;
+  min-height: 1.1em;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 96vw;
 }
 .solve-controls {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  max-width: var(--bsz);
-  margin: 6px auto 0;
+  gap: 6px;
+  width: 100%;
+  max-width: min(var(--bsz), 96vw);
+  margin: 2px auto 0;
 }
 .ctrl-btn {
-  padding: 12px 6px;
+  padding: clamp(9px, 2.4vh, 13px) 4px;
   border: none;
   border-radius: 12px;
   font-weight: 800;
-  font-size: 14px;
+  font-size: clamp(13px, 3.4vw, 15px);
   color: #fff;
   background: #6b563c;
   cursor: pointer;
