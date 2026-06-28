@@ -72,6 +72,26 @@ describe('生成局面に対する整合性', () => {
     expect(generateDefenderMoves(cur).length).toBe(0);
   });
 
+  it('生成した7手詰め（種データ）はちょうど7手・余詰なしで、主手順で詰む', async () => {
+    const { deserialize } = await import('../src/engine/board.ts');
+    // scripts/genSeed.ts が生成・検証済みの 7手詰め局面（固定SFEN・高速＆決定的）
+    const sfen =
+      '000000000000000018000000000000000215000000000000040515000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 b 00:1,01:1';
+    const pos = deserialize(sfen);
+
+    const res = analyze(pos, 7);
+    expect(res.mate).toBe(true);
+    expect(res.unique).toBe(true);
+    expect(res.dist).toBe(7);
+
+    const line = principalLine(pos, 7);
+    expect(line.length).toBe(7);
+    let cur = pos.clone();
+    for (const mv of line) cur = applyMove(cur, mv);
+    expect(cur.turn).toBe(WHITE);
+    expect(generateDefenderMoves(cur).length).toBe(0);
+  });
+
   it('攻め方の手番では「詰みに繋がる手」が唯一である', async () => {
     const { mulberry32, generateProblem } = await import('../src/engine/generator.ts');
     const { deserialize } = await import('../src/engine/board.ts');

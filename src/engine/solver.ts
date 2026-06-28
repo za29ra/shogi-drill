@@ -122,7 +122,8 @@ export function analyze(pos: Position, n: number): AnalyzeResult {
   const useTT = n >= 4;
   if (useTT) TT = new Map();
   NODES = 0;
-  NODE_LIMIT = n >= 5 ? 20000 : INF;
+  // 深いほど検証に多くのノードを要する。7手は最大で 3〜4 万ノード使うことがあるため緩和する。
+  NODE_LIMIT = n >= 7 ? 60000 : n >= 5 ? 20000 : INF;
   try {
     const dist = solveAttack(pos, n);
     if (dist !== n) return { mate: false, unique: false, dist };

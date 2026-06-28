@@ -144,6 +144,18 @@ const CONFIGS: Record<number, GenConfig> = {
     radius: 2,
     edgeBias: 0.7,
   },
+  7: {
+    // 7手はさらに弱い駒中心（飛角・金を控えめ）、玉を隅へ強く寄せ・壁駒多めにして
+    // 速い詰みを避けつつ手数を伸ばす。動的生成の現実的な上限（種データで体感を担保）。
+    boardPool: [SILVER, SILVER, KNIGHT, KNIGHT, LANCE, PAWN, GOLD],
+    handPool: [SILVER, KNIGHT, LANCE, PAWN],
+    blockPool: [PAWN, PAWN, GOLD, SILVER],
+    board: [2, 4],
+    hand: [0, 2],
+    block: [2, 3],
+    radius: 2,
+    edgeBias: 0.82,
+  },
 };
 
 // 候補局面を構築する（検証はしない）。テスト・調整用に export。

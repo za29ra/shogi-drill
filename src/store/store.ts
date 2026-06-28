@@ -1,7 +1,11 @@
 // localStorage による設定・成績の保存。サーバ不要・端末内のみ。
 
+// 出題しうる手数の一覧（UI・問題供給・設定の検証で共有する単一の真実）。
+// 7手はブラウザ動的生成の現実的な上限（種データを厚めに用意して体感を担保）。
+export const MOVE_COUNTS = [1, 3, 5, 7] as const;
+
 export interface Settings {
-  moveCounts: number[]; // 出題する手数（1/3/5 の組み合わせ）
+  moveCounts: number[]; // 出題する手数（1/3/5/7 の組み合わせ）
   dailyGoal: number; // 1日に解く問題数
   sound: boolean; // 効果音
   showGuide: boolean; // 駒の移動ガイド表示
@@ -48,7 +52,7 @@ export function getSettings(): Settings {
   const s = readJSON<Settings>(SETTINGS_KEY, DEFAULT_SETTINGS);
   // 妥当性の最低限の補正
   if (!Array.isArray(s.moveCounts) || s.moveCounts.length === 0) s.moveCounts = [1, 3];
-  s.moveCounts = s.moveCounts.filter((n) => [1, 3, 5].includes(n));
+  s.moveCounts = s.moveCounts.filter((n) => (MOVE_COUNTS as readonly number[]).includes(n));
   if (s.moveCounts.length === 0) s.moveCounts = [1];
   s.dailyGoal = Math.min(50, Math.max(1, Math.floor(s.dailyGoal) || 5));
   return s;
