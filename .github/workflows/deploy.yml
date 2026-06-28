@@ -1,12 +1,10 @@
 name: Deploy to GitHub Pages
 
-# main / master / 開発ブランチへの push、または手動実行でビルドして Pages へ公開する。
+# main への push、または手動実行でビルドして Pages へ公開する。
 on:
   push:
     branches:
       - main
-      - master
-      - claude/shogi-puzzle-drill-app-4tghnu
   workflow_dispatch:
 
 permissions:
