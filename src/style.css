@@ -1004,7 +1004,9 @@ body {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   background: linear-gradient(#2c2218, #241b12);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* ホーム画面追加(スタンドアロン)では下部ナビが消えるので、セーフエリアを丸ごと確保せず
+     ホームインジケータに被らない最小限だけ残し、空いた分はメイン領域(盤)が自動で広がる。 */
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - 22px));
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.3);
 }
 .tab {
