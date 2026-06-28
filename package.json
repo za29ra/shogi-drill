@@ -3,6 +3,10 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "description": "詰将棋ドリル - 小学生向けに将棋の基本を楽しく学べる詰将棋自動生成アプリ",
   "scripts": {
     "dev": "vite",
@@ -16,7 +20,7 @@
   "devDependencies": {
     "tsx": "^4.19.2",
     "typescript": "^6.0.3",
-    "vite": "^5.4.10",
+    "vite": "^8.1.0",
     "vitest": "^4.1.9"
   }
 }
