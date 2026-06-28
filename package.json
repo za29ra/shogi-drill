@@ -1,0 +1,22 @@
+{
+  "name": "shogi-drill",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "詰将棋ドリル - 小学生向けに将棋の基本を楽しく学べる詰将棋自動生成アプリ",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -b --noEmit",
+    "gen:seed": "tsx scripts/genSeed.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.8"
+  }
+}
