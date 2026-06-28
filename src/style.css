@@ -788,6 +788,52 @@ body {
   font-size: 15px;
   cursor: pointer;
 }
+.backup-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.backup-btn {
+  padding: 14px 8px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.backup-btn:active {
+  transform: scale(0.96);
+}
+.backup-btn:disabled {
+  opacity: 0.5;
+}
+.backup-export {
+  background: var(--accent);
+}
+.backup-import {
+  background: #4a90c0;
+}
+.backup-msg {
+  margin-top: 10px;
+  font-size: 13px;
+  min-height: 1.2em;
+  color: var(--ink-soft);
+}
+.backup-msg.ok {
+  color: var(--accent);
+  font-weight: 700;
+}
+.backup-msg.ng {
+  color: var(--danger);
+  font-weight: 700;
+}
+@media (max-width: 360px) {
+  .backup-btns {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ===== 下部タブ ===== */
 .tabbar {

@@ -144,3 +144,80 @@ export function totals(): { solved: number; attempts: number; days: number } {
     days: h.filter((r) => r.solved > 0).length,
   };
 }
+
+// ===== バックアップ / 復元（iCloud Drive 等へのファイル書き出し・読み込み用） =====
+
+export interface BackupPayload {
+  app: 'shogi-drill';
+  version: 1;
+  exportedAt: string; // ISO 文字列
+  settings: Settings;
+  history: DayRecord[];
+}
+
+// バックアップ用のデータを作る
+export function exportBackup(): BackupPayload {
+  return {
+    app: 'shogi-drill',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    settings: getSettings(),
+    history: getHistory(),
+  };
+}
+
+// 2つの履歴を日付単位でマージする（純粋関数・テスト用に公開）。
+// 同じ日付が両方にある場合は「解いた数が多い方（同数なら出題数が多い方）」を採用する。
+// これにより、同じ端末で復元しても二重計上されず、別端末のデータも失わない。
+export function mergeHistory(current: DayRecord[], incoming: DayRecord[]): DayRecord[] {
+  const byDate = new Map<string, DayRecord>();
+  for (const r of current) byDate.set(r.date, r);
+  for (const r of incoming) {
+    const cur = byDate.get(r.date);
+    if (!cur || r.solved > cur.solved || (r.solved === cur.solved && r.attempts > cur.attempts)) {
+      byDate.set(r.date, r);
+    }
+  }
+  return [...byDate.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+}
+
+// バックアップ JSON の妥当性を検証して正規化する（不正なら例外）。
+export function parseBackup(raw: unknown): BackupPayload {
+  if (!raw || typeof raw !== 'object') throw new Error('invalid backup');
+  const obj = raw as Record<string, unknown>;
+  if (obj.app !== 'shogi-drill') throw new Error('not a shogi-drill backup');
+  const history = Array.isArray(obj.history) ? (obj.history as DayRecord[]) : [];
+  // 各レコードの最低限の形をチェック
+  const cleanHistory: DayRecord[] = [];
+  for (const r of history) {
+    if (r && typeof r.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.date)) {
+      cleanHistory.push({
+        date: r.date,
+        solved: Number(r.solved) || 0,
+        attempts: Number(r.attempts) || 0,
+        firstTry: Number(r.firstTry) || 0,
+        byMoves: r.byMoves && typeof r.byMoves === 'object' ? r.byMoves : {},
+      });
+    }
+  }
+  const settings = (obj.settings && typeof obj.settings === 'object'
+    ? (obj.settings as Settings)
+    : DEFAULT_SETTINGS) as Settings;
+  return {
+    app: 'shogi-drill',
+    version: 1,
+    exportedAt: typeof obj.exportedAt === 'string' ? obj.exportedAt : new Date().toISOString(),
+    settings,
+    history: cleanHistory,
+  };
+}
+
+// バックアップを復元する（履歴はマージ、設定は取り込む）。反映した日数を返す。
+export function importBackup(raw: unknown): { days: number; total: number } {
+  const payload = parseBackup(raw);
+  const merged = mergeHistory(getHistory(), payload.history);
+  saveHistory(merged);
+  // 取り込んだ設定で上書き（保存時に getSettings 側で妥当性を正規化）
+  saveSettings({ ...DEFAULT_SETTINGS, ...payload.settings });
+  return { days: payload.history.length, total: merged.length };
+}

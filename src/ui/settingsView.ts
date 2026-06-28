@@ -1,6 +1,7 @@
 // 設定画面。手数・1日の問題数・効果音・移動ガイド・データ消去。
 
 import { getSettings, saveSettings, Settings } from '../store/store.ts';
+import { exportBackupFile, pickAndRestoreBackup } from './backup.ts';
 
 export interface SettingsViewDeps {
   onChange: (s: Settings) => void;
@@ -86,6 +87,64 @@ export class SettingsView {
       this.toggle('こうかおん', s.sound, (v) => this.update((st) => (st.sound = v))),
     );
     this.root.appendChild(toggleSec);
+
+    // バックアップ（iCloud Drive など）
+    const backupSec = this.section(
+      'バックアップ（iCloud）',
+      '成績をファイルに書き出して iCloud Drive に保存できます。別の端末では「復元」で読み込めます。',
+    );
+    const backupMsg = document.createElement('div');
+    backupMsg.className = 'backup-msg';
+    const backupBtns = document.createElement('div');
+    backupBtns.className = 'backup-btns';
+
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'backup-btn backup-export';
+    exportBtn.textContent = '📤 バックアップを書き出す';
+    exportBtn.addEventListener('click', async () => {
+      exportBtn.disabled = true;
+      try {
+        const how = await exportBackupFile();
+        backupMsg.textContent =
+          how === 'shared'
+            ? '共有メニューの「ファイルに保存」から iCloud Drive を選んで保存してください。'
+            : 'バックアップファイルを書き出しました。「ファイル」アプリで iCloud Drive に移せます。';
+        backupMsg.className = 'backup-msg ok';
+      } catch {
+        backupMsg.textContent = '書き出しに失敗しました。';
+        backupMsg.className = 'backup-msg ng';
+      } finally {
+        exportBtn.disabled = false;
+      }
+    });
+
+    const importBtn = document.createElement('button');
+    importBtn.className = 'backup-btn backup-import';
+    importBtn.textContent = '📥 バックアップから復元';
+    importBtn.addEventListener('click', () => {
+      if (!confirm('バックアップを読み込みます。現在の記録と統合（多い方を採用）します。よろしいですか？')) return;
+      pickAndRestoreBackup((message, ok) => {
+        if (ok) {
+          // 復元後は設定（手数・目標）が変わるので再描画してから、新しい要素にメッセージを出す
+          this.deps.onChange(getSettings());
+          this.render();
+          const m = this.root.querySelector('.backup-msg');
+          if (m) {
+            m.textContent = message;
+            m.className = 'backup-msg ok';
+          }
+        } else {
+          backupMsg.textContent = message;
+          backupMsg.className = 'backup-msg ng';
+        }
+      });
+    });
+
+    backupBtns.appendChild(exportBtn);
+    backupBtns.appendChild(importBtn);
+    backupSec.appendChild(backupBtns);
+    backupSec.appendChild(backupMsg);
+    this.root.appendChild(backupSec);
 
     // データ
     const dataSec = this.section('データ', '成績はこの端末だけに保存されます。');
