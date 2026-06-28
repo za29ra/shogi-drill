@@ -123,6 +123,8 @@ export class SolveView {
 
   private startProblem(): void {
     const settings = getSettings();
+    this.root.querySelectorAll('.solved-burst').forEach((e) => e.remove());
+    this.root.classList.remove('flash-bad', 'flash-win');
     this.board.setGuide(settings.showGuide);
     this.pos = deserialize(this.problem.sfen);
     this.remaining = this.problem.moves;
@@ -212,23 +214,45 @@ export class SolveView {
     this.finished = true;
     this.board.setInteractive(false);
     playFinish(settings.sound);
-    this.setMessage(this.wrong ? '詰み！せいかい！' : '詰み！一発せいかい！すごい！', 'win');
+    const firstTry = !this.wrong;
+    this.setMessage(firstTry ? '詰み！一発せいかい！すごい！' : '詰み！せいかい！', 'win');
     this.flash('win');
+    this.showSolvedEffect(firstTry);
     if (!this.recorded) {
       this.recorded = true;
-      recordResult(this.problem.moves, true, !this.wrong);
+      recordResult(this.problem.moves, true, firstTry);
       this.deps.onProgress();
       this.celebrateIfGoal();
     }
+  }
+
+  // 最終正解時の大きなお祝い演出（不正解の赤いシェイクとの差を明確にする）
+  private showSolvedEffect(firstTry: boolean): void {
+    this.root.querySelectorAll('.solved-burst').forEach((e) => e.remove());
+    const burst = document.createElement('div');
+    burst.className = 'solved-burst';
+    burst.innerHTML =
+      '<div class="solved-badge">' +
+      '<div class="solved-emoji">🎉</div>' +
+      '<div class="solved-title">せいかい！</div>' +
+      `<div class="solved-sub">${firstTry ? '一発で詰み！すごい！' : 'よくできました！'}</div>` +
+      '</div>';
+    this.root.appendChild(burst);
+    window.setTimeout(() => burst.classList.add('fade'), 1200);
+    window.setTimeout(() => burst.remove(), 1700);
   }
 
   private showHint(): void {
     if (this.finished || this.busy) return;
     const m = solutionMove(this.pos, this.remaining);
     if (!m) return;
+    const isDropHint = m.from === null;
     // 動かす駒（盤上）を光らせる。打つ手は持ち駒なので着地点を示す。
-    this.board.setHint(m.from ?? m.to);
-    this.setMessage('ヒント：光っているところに注目！', 'info');
+    this.board.setHint(isDropHint ? m.to : m.from!);
+    this.setMessage(
+      isDropHint ? 'ヒント：光っているマスに、もちごまを打とう！' : 'ヒント：光っている駒を動かそう！',
+      'info',
+    );
   }
 
   private showAnswer(): void {
