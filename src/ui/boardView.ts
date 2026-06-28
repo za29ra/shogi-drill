@@ -105,6 +105,7 @@ export class BoardView {
     this.pos = pos.clone();
     this.selection = null;
     this.legalForSelection = [];
+    this.hintSquare = null; // 局面が変わったらヒントの発光は消す
     this.render();
   }
 
