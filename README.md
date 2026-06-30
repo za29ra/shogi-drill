@@ -1,7 +1,7 @@
 # 詰将棋ドリル
 
 小学生（とくに本将棋を覚えたての子）が、**将棋の基本を楽しく学ぶ**ための詰将棋ドリル
-Web アプリです。詰将棋をたくさん解くことで、**詰めろの手順・持ち駒の活用・駒の動かし方**が
+Web アプリです。詰将棋をたくさん解くことで、**詰みの手順を読む力・持ち駒の活用・駒の動かし方**が
 自然に身につくことを狙っています。
 
 - すべて自動生成。問題は毎回ランダムに作られます（同じ問題ばかりになりません）。
@@ -56,12 +56,12 @@ Web アプリです。詰将棋をたくさん解くことで、**詰めろの�
 ### 開発
 
 ```bash
-npm install
-npm run dev        # 開発サーバ（http://localhost:5173/shogi-drill/）
-npm test           # エンジン・ソルバー・生成器のテスト
-npm run build      # 本番ビルド（dist/）
-npm run preview    # ビルド結果の確認
-npm run gen:seed   # 種データ（src/data/seedProblems.ts）を再生成
+pnpm install
+pnpm dev           # 開発サーバ（http://localhost:5173/shogi-drill/）
+pnpm test          # エンジン・ソルバー・生成器のテスト
+pnpm build         # 本番ビルド（dist/）
+pnpm preview       # ビルド結果の確認
+pnpm gen:seed      # 種データ（src/data/seedProblems.ts）を再生成
 ```
 
 ## GitHub Pages で公開する
