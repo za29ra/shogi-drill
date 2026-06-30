@@ -1,6 +1,6 @@
 // 成績画面。過去1ヶ月以上のカレンダー（ヒートマップ）と集計を表示する。
 
-import { getRecentDays, getStreak, getTodayRecord, getSettings, todayStr, totals } from '../store/store.ts';
+import { getRecentDays, getStreak, getTodayRecord, getSettings, todayStr, totals, MOVE_COUNTS } from '../store/store.ts';
 
 const WEEKS = 6; // 6週間（42日 = 1ヶ月以上）を表示
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -137,9 +137,10 @@ export class StatsView {
 
   private byMovesSection(): HTMLElement {
     const days = getRecentDays(30);
-    const agg: Record<number, number> = { 1: 0, 3: 0, 5: 0 };
+    const agg: Record<number, number> = {};
+    for (const k of MOVE_COUNTS) agg[k] = 0;
     for (const r of days) {
-      for (const k of [1, 3, 5]) agg[k] += r.byMoves[k] ?? 0;
+      for (const k of MOVE_COUNTS) agg[k] += r.byMoves[k] ?? 0;
     }
     const wrap = document.createElement('div');
     wrap.className = 'bymoves';
@@ -147,8 +148,8 @@ export class StatsView {
     title.className = 'section-title';
     title.textContent = '手数べつ（直近30日）';
     wrap.appendChild(title);
-    const max = Math.max(1, agg[1], agg[3], agg[5]);
-    for (const k of [1, 3, 5]) {
+    const max = Math.max(1, ...MOVE_COUNTS.map((k) => agg[k]));
+    for (const k of MOVE_COUNTS) {
       const row = document.createElement('div');
       row.className = 'bymoves-row';
       const label = document.createElement('span');
