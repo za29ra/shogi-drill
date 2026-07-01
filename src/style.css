@@ -813,6 +813,7 @@ body {
 .day-legend {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px 14px;
   margin: 4px 0 14px;
 }
@@ -837,10 +838,6 @@ body {
   border-radius: 12px;
   padding: 10px 12px;
   margin-top: 14px;
-}
-.bymoves .section-title {
-  color: var(--ink);
-  margin-top: 4px;
 }
 .bymoves-row {
   display: flex;

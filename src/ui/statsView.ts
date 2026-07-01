@@ -103,24 +103,24 @@ export class StatsView {
 
     // 選択した日の内訳
     const dayRec = getDayRecord(this.selectedDate);
+    const dayTitle = document.createElement('h3');
+    dayTitle.className = 'section-title';
+    dayTitle.textContent = `手数べつ（${dayRec.date}）`;
+    this.root.appendChild(dayTitle);
     this.root.appendChild(
-      this.byMovesBreakdown(
-        `手数べつ（${dayRec.date}）`,
-        dayRec.byMoves,
-        `出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`,
-      ),
+      this.byMovesCard(dayRec.byMoves, `出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
     );
 
     // 手数別の集計（直近30日）
     const days30 = getRecentDays(30);
     const solved30 = days30.reduce((a, r) => a + r.solved, 0);
     const attempts30 = days30.reduce((a, r) => a + r.attempts, 0);
+    const monthTitle = document.createElement('h3');
+    monthTitle.className = 'section-title';
+    monthTitle.textContent = '手数べつ（直近30日）';
+    this.root.appendChild(monthTitle);
     this.root.appendChild(
-      this.byMovesBreakdown(
-        '手数べつ（直近30日）',
-        aggregateByMoves(days30),
-        `出題 ${attempts30}問 / 解けた ${solved30}問`,
-      ),
+      this.byMovesCard(aggregateByMoves(days30), `出題 ${attempts30}問 / 解けた ${solved30}問`),
     );
 
     // 解答カテゴリの凡例（日別・直近30日の両方に共通のため、まとめて下に1回だけ表示）
@@ -222,19 +222,12 @@ export class StatsView {
 
   // 手数別内訳を、4色の積み上げバーで表示する（選択日／直近30日集計の両方で使う）。
   // 各色セグメントはタップでツールチップ（件数・割合）を表示する。
-  private byMovesBreakdown(
-    titleText: string,
-    byMoves: Record<number, MoveTally>,
-    totalsText?: string,
-  ): HTMLElement {
+  // タイトルはカレンダーと同様に呼び出し側で別要素として表示するため、ここではカードの中身のみを作る。
+  private byMovesCard(byMoves: Record<number, MoveTally>, totalsText?: string): HTMLElement {
     this.dismissBarTooltip();
 
     const wrap = document.createElement('div');
     wrap.className = 'bymoves';
-    const title = document.createElement('h3');
-    title.className = 'section-title';
-    title.textContent = titleText;
-    wrap.appendChild(title);
     if (totalsText) {
       const total = document.createElement('div');
       total.className = 'day-detail-total';
