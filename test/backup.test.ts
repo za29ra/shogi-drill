@@ -29,6 +29,21 @@ describe('mergeHistory', () => {
   });
 });
 
+describe('parseBackup with hintUsed', () => {
+  it('hintUsed を含むレコードを正しく取り込む', () => {
+    const out = parseBackup({
+      app: 'shogi-drill',
+      history: [{ date: '2026-06-01', solved: 3, attempts: 4, firstTry: 1, hintUsed: 2, byMoves: { 1: 3 } }],
+    });
+    expect(out.history[0].hintUsed).toBe(2);
+  });
+
+  it('hintUsed が欠けている旧形式のレコードは 0 として扱う', () => {
+    const out = parseBackup({ app: 'shogi-drill', history: [rec('2026-06-01', 2, 3)] });
+    expect(out.history[0].hintUsed).toBe(0);
+  });
+});
+
 describe('parseBackup', () => {
   it('正しいバックアップを正規化して返す', () => {
     const payload = {

@@ -1,6 +1,16 @@
 // 成績画面。過去1ヶ月以上のカレンダー（ヒートマップ）と集計を表示する。
 
-import { getRecentDays, getStreak, getTodayRecord, getSettings, todayStr, totals, MOVE_COUNTS } from '../store/store.ts';
+import {
+  getDayRecord,
+  getRecentDays,
+  getStreak,
+  getTodayRecord,
+  getSettings,
+  todayStr,
+  totals,
+  MOVE_COUNTS,
+  type DayRecord,
+} from '../store/store.ts';
 
 const WEEKS = 6; // 6週間（42日 = 1ヶ月以上）を表示
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -15,6 +25,7 @@ function levelClass(solved: number): string {
 
 export class StatsView {
   private root: HTMLElement;
+  private selectedDate: string = todayStr();
   constructor(root: HTMLElement) {
     this.root = root;
   }
@@ -51,8 +62,11 @@ export class StatsView {
     this.root.appendChild(calTitle);
     this.root.appendChild(this.calendar());
 
+    // 選択した日の内訳
+    this.root.appendChild(this.dayDetail());
+
     // 手数別の集計（直近30日）
-    this.root.appendChild(this.byMovesSection());
+    this.root.appendChild(this.byMovesSection(getRecentDays(30), '手数べつ（直近30日）'));
 
     // 凡例
     const legend = document.createElement('div');
@@ -125,9 +139,16 @@ export class StatsView {
         const cell = document.createElement('div');
         cell.className = `cal-cell ${levelClass(solved)}`;
         if (ds === todayS) cell.classList.add('cal-today');
+        if (ds === this.selectedDate) cell.classList.add('cal-selected');
         if (cur > now) cell.classList.add('cal-future');
         cell.title = `${ds}: ${solved}問`;
         cell.textContent = String(cur.getDate());
+        if (cur <= now) {
+          cell.addEventListener('click', () => {
+            this.selectedDate = ds;
+            this.render();
+          });
+        }
         row.appendChild(cell);
       }
       wrap.appendChild(row);
@@ -135,8 +156,94 @@ export class StatsView {
     return wrap;
   }
 
-  private byMovesSection(): HTMLElement {
-    const days = getRecentDays(30);
+  private dayDetail(): HTMLElement {
+    const rec = getDayRecord(this.selectedDate);
+    const [y, mo, d] = rec.date.split('-').map(Number);
+    const wd = WEEKDAYS[new Date(y, mo - 1, d).getDay()];
+    const hintUsed = rec.hintUsed ?? 0;
+    const wrongSolved = Math.max(0, rec.solved - rec.firstTry - hintUsed);
+    const answerViewed = Math.max(0, rec.attempts - rec.solved);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'day-detail';
+
+    const title = document.createElement('h3');
+    title.className = 'section-title';
+    title.textContent = `${rec.date}（${wd}）の内訳`;
+    wrap.appendChild(title);
+
+    const card = document.createElement('div');
+    card.className = 'day-detail-card';
+    const total = document.createElement('div');
+    total.className = 'day-detail-total';
+    total.textContent = `出題 ${rec.attempts}問 / 解けた ${rec.solved}問`;
+    card.appendChild(total);
+
+    const segments: { label: string; value: number; color: string }[] = [
+      { label: '一発正解（ノーミス）', value: rec.firstTry, color: 'var(--good)' },
+      { label: '間違えたけど自力正解', value: wrongSolved, color: 'var(--accent2)' },
+      { label: 'ヒントを使って正解', value: hintUsed, color: 'var(--seg-hint)' },
+      { label: '答えを見た', value: answerViewed, color: 'var(--ring-bg)' },
+    ];
+    card.appendChild(this.breakdownDonut(segments, rec.attempts));
+    wrap.appendChild(card);
+
+    if (rec.attempts > 0) {
+      wrap.appendChild(this.byMovesSection([rec], `手数べつ（${rec.date}）`));
+    }
+    return wrap;
+  }
+
+  // 内訳をドーナツ状の円グラフ＋凡例で表示する（`total` の内訳、割合順ではなく固定の意味順）
+  private breakdownDonut(
+    segments: { label: string; value: number; color: string }[],
+    total: number,
+  ): HTMLElement {
+    const wrap = document.createElement('div');
+    wrap.className = 'donut-wrap';
+
+    const donut = document.createElement('div');
+    donut.className = 'donut';
+    if (total > 0) {
+      let acc = 0;
+      const stops: string[] = [];
+      for (const seg of segments) {
+        if (seg.value <= 0) continue;
+        const start = (acc / total) * 360;
+        acc += seg.value;
+        const end = (acc / total) * 360;
+        stops.push(`${seg.color} ${start}deg ${end}deg`);
+      }
+      donut.style.background = `conic-gradient(${stops.join(', ')})`;
+    } else {
+      donut.style.background = 'var(--ring-bg)';
+    }
+    const inner = document.createElement('div');
+    inner.className = 'donut-inner';
+    inner.innerHTML =
+      total > 0
+        ? `<div class="donut-num">${total}</div><div class="donut-sub">問</div>`
+        : '<div class="donut-sub">記録なし</div>';
+    donut.appendChild(inner);
+    wrap.appendChild(donut);
+
+    const legend = document.createElement('div');
+    legend.className = 'day-legend';
+    for (const seg of segments) {
+      const pct = total > 0 ? Math.round((seg.value / total) * 100) : 0;
+      const item = document.createElement('div');
+      item.className = 'day-legend-item';
+      item.innerHTML =
+        `<i class="day-legend-swatch" style="background:${seg.color}"></i>` +
+        `<span class="day-legend-label">${seg.label}</span>` +
+        `<span class="day-legend-val">${seg.value}問${total > 0 ? `（${pct}%）` : ''}</span>`;
+      legend.appendChild(item);
+    }
+    wrap.appendChild(legend);
+    return wrap;
+  }
+
+  private byMovesSection(days: DayRecord[], titleText: string): HTMLElement {
     const agg: Record<number, number> = {};
     for (const k of MOVE_COUNTS) agg[k] = 0;
     for (const r of days) {
@@ -146,7 +253,7 @@ export class StatsView {
     wrap.className = 'bymoves';
     const title = document.createElement('h3');
     title.className = 'section-title';
-    title.textContent = '手数べつ（直近30日）';
+    title.textContent = titleText;
     wrap.appendChild(title);
     const max = Math.max(1, ...MOVE_COUNTS.map((k) => agg[k]));
     for (const k of MOVE_COUNTS) {

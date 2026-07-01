@@ -16,7 +16,8 @@ export interface DayRecord {
   date: string; // 'YYYY-MM-DD'
   solved: number; // 解けた問題数
   attempts: number; // 出題数
-  firstTry: number; // 一発正解数
+  firstTry: number; // 一発正解数（ノーミス・ヒントなし）
+  hintUsed?: number; // 解けた問題のうちヒントを使用した数
   byMoves: Record<number, number>; // 手数別 解けた数
 }
 
@@ -82,19 +83,27 @@ function saveHistory(history: DayRecord[]): void {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
 }
 
+export function getDayRecord(date: string): DayRecord {
+  const rec = getHistory().find((r) => r.date === date);
+  return rec ?? { date, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} };
+}
+
 export function getTodayRecord(): DayRecord {
-  const t = todayStr();
-  const rec = getHistory().find((r) => r.date === t);
-  return rec ?? { date: t, solved: 0, attempts: 0, firstTry: 0, byMoves: {} };
+  return getDayRecord(todayStr());
 }
 
 // 1問の結果を記録する。
-export function recordResult(moves: number, solved: boolean, firstTry: boolean): DayRecord {
+export function recordResult(
+  moves: number,
+  solved: boolean,
+  firstTry: boolean,
+  hintUsed: boolean,
+): DayRecord {
   const history = getHistory();
   const t = todayStr();
   let rec = history.find((r) => r.date === t);
   if (!rec) {
-    rec = { date: t, solved: 0, attempts: 0, firstTry: 0, byMoves: {} };
+    rec = { date: t, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} };
     history.push(rec);
   }
   rec.attempts += 1;
@@ -102,6 +111,7 @@ export function recordResult(moves: number, solved: boolean, firstTry: boolean):
     rec.solved += 1;
     rec.byMoves[moves] = (rec.byMoves[moves] ?? 0) + 1;
     if (firstTry) rec.firstTry += 1;
+    if (hintUsed) rec.hintUsed = (rec.hintUsed ?? 0) + 1;
   }
   saveHistory(history);
   return rec;
@@ -134,7 +144,7 @@ export function getRecentDays(days: number): DayRecord[] {
   d.setDate(d.getDate() - (days - 1));
   for (let i = 0; i < days; i++) {
     const ds = todayStr(d);
-    out.push(map.get(ds) ?? { date: ds, solved: 0, attempts: 0, firstTry: 0, byMoves: {} });
+    out.push(map.get(ds) ?? { date: ds, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} });
     d.setDate(d.getDate() + 1);
   }
   return out;
@@ -200,6 +210,7 @@ export function parseBackup(raw: unknown): BackupPayload {
         solved: Number(r.solved) || 0,
         attempts: Number(r.attempts) || 0,
         firstTry: Number(r.firstTry) || 0,
+        hintUsed: Number(r.hintUsed) || 0,
         byMoves: r.byMoves && typeof r.byMoves === 'object' ? r.byMoves : {},
       });
     }

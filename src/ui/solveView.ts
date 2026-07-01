@@ -36,6 +36,7 @@ export class SolveView {
   private wrong = false;
   private finished = false;
   private recorded = false;
+  private hintUsedThisProblem = false;
   private busy = false;
   private kifu: string[] = [];
 
@@ -113,6 +114,8 @@ export class SolveView {
 
   private loadProblem(): void {
     this.problem = this.deps.source.next();
+    this.recorded = false;
+    this.hintUsedThisProblem = false;
     this.startProblem();
   }
 
@@ -130,7 +133,6 @@ export class SolveView {
     this.remaining = this.problem.moves;
     this.wrong = false;
     this.finished = false;
-    this.recorded = false;
     this.busy = false;
     this.kifu = [];
     this.board.setLastMove(null);
@@ -214,13 +216,13 @@ export class SolveView {
     this.finished = true;
     this.board.setInteractive(false);
     playFinish(settings.sound);
-    const firstTry = !this.wrong;
+    const firstTry = !this.wrong && !this.hintUsedThisProblem;
     this.setMessage(firstTry ? '詰み！一発せいかい！すごい！' : '詰み！せいかい！', 'win');
     this.flash('win');
     this.showSolvedEffect(firstTry);
     if (!this.recorded) {
       this.recorded = true;
-      recordResult(this.problem.moves, true, firstTry);
+      recordResult(this.problem.moves, true, firstTry, this.hintUsedThisProblem);
       this.deps.onProgress();
       this.celebrateIfGoal();
     }
@@ -247,6 +249,7 @@ export class SolveView {
     const m = solutionMove(this.pos, this.remaining);
     if (!m) return;
     const isDropHint = m.from === null;
+    this.hintUsedThisProblem = true;
     // 動かす駒（盤上）を光らせる。打つ手は持ち駒なので着地点を示す。
     this.board.setHint(isDropHint ? m.to : m.from!);
     this.setMessage(
@@ -266,7 +269,7 @@ export class SolveView {
     this.board.setHint(null);
     if (!this.recorded && !this.finished) {
       this.recorded = true;
-      recordResult(this.problem.moves, false, false); // 答えを見た＝未正解として記録
+      recordResult(this.problem.moves, false, false, this.hintUsedThisProblem); // 答えを見た＝未正解として記録
       this.deps.onProgress();
     }
     let i = 0;
