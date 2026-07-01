@@ -17,7 +17,7 @@
   --good: #2e9e5b;
   --bad: #c0492e;
   --win: #e0a72b;
-  --seg-hint: #3f7fd1;
+  --seg-blue: #3f7fd1;
   /* 盤のサイズ。初期値（JS が領域に合わせて再計算して上書きする） */
   --bsz: min(90vw, 42vh, 520px);
   --pad-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
@@ -805,31 +805,32 @@ body {
   background: #1f8a4c;
 }
 
-.day-detail {
-  margin-top: 14px;
-}
-.day-detail-card {
-  background: var(--card);
-  color: var(--ink);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
 .day-detail-total {
+  display: flex;
+  align-items: baseline;
   font-weight: 800;
   font-size: 14px;
   margin-bottom: 8px;
 }
+.day-detail-period {
+  flex: 0 0 7em;
+}
+.day-detail-stats {
+  flex: 1;
+}
 .day-legend {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px 14px;
-  margin: 4px 0 10px;
+  margin: 4px 0 14px;
 }
 .day-legend-item {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
+  color: #c8b58e;
 }
 .day-legend-swatch {
   width: 12px;
@@ -845,10 +846,6 @@ body {
   border-radius: 12px;
   padding: 10px 12px;
   margin-top: 14px;
-}
-.bymoves .section-title {
-  color: var(--ink);
-  margin-top: 4px;
 }
 .bymoves-row {
   display: flex;
@@ -867,12 +864,6 @@ body {
   background: var(--card2);
   border-radius: 8px;
   overflow: hidden;
-}
-.bymoves-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 8px;
-  transition: width 0.3s;
 }
 .bymoves-bar-stacked {
   display: flex;

@@ -10,16 +10,19 @@ import {
   totals,
   MOVE_COUNTS,
   type DayRecord,
+  type MoveTally,
 } from '../store/store.ts';
 
 const WEEKS = 6; // 6週間（42日 = 1ヶ月以上）を表示
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 // 解答カテゴリの色とラベル（一発正解／間違えたけど自力正解／ヒントを使って正解／答えを見た の順で固定）
+// 「間違えたけど自力正解」は「ヒントを使って正解」より自力度が高いとみなし、
+// 一発正解（緑）に近いトーンの色を割り当てる。
 const CATEGORY_COLORS = [
   { label: '一発正解（ノーミス）', color: 'var(--good)' },
-  { label: '間違えたけど自力正解', color: 'var(--accent2)' },
-  { label: 'ヒントを使って正解', color: 'var(--seg-hint)' },
+  { label: '間違えたけど自力正解', color: 'var(--seg-blue)' },
+  { label: 'ヒントを使って正解', color: 'var(--accent2)' },
   { label: '答えを見た', color: 'var(--ring-bg)' },
 ];
 
@@ -29,6 +32,23 @@ function levelClass(solved: number): string {
   if (solved <= 4) return 'lv2';
   if (solved <= 7) return 'lv3';
   return 'lv4';
+}
+
+// 複数日分の手数別内訳を合算する（直近30日集計用）。
+function aggregateByMoves(days: DayRecord[]): Record<number, MoveTally> {
+  const agg: Record<number, MoveTally> = {};
+  for (const k of MOVE_COUNTS) agg[k] = { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
+  for (const r of days) {
+    for (const k of MOVE_COUNTS) {
+      const mv = r.byMoves[k];
+      if (!mv) continue;
+      agg[k].attempts += mv.attempts;
+      agg[k].solved += mv.solved;
+      agg[k].firstTry += mv.firstTry;
+      agg[k].hintUsed += mv.hintUsed;
+    }
+  }
+  return agg;
 }
 
 export class StatsView {
@@ -74,13 +94,7 @@ export class StatsView {
     this.root.appendChild(calTitle);
     this.root.appendChild(this.calendar());
 
-    // 選択した日の内訳
-    this.root.appendChild(this.dayDetail());
-
-    // 手数別の集計（直近30日）
-    this.root.appendChild(this.byMovesSection(getRecentDays(30), '手数べつ（直近30日）'));
-
-    // 凡例
+    // カレンダーの色レベルの凡例（カレンダー直下に配置）
     const legend = document.createElement('div');
     legend.className = 'heat-legend';
     legend.innerHTML =
@@ -88,6 +102,31 @@ export class StatsView {
       ['lv0', 'lv1', 'lv2', 'lv3', 'lv4'].map((c) => `<i class="heat ${c}"></i>`).join('') +
       '<span>多い</span>';
     this.root.appendChild(legend);
+
+    // 手数べつ（選択した日／直近30日の2カードをまとめる見出しは1つだけ）
+    const byMovesTitle = document.createElement('h3');
+    byMovesTitle.className = 'section-title';
+    byMovesTitle.textContent = '手数べつ';
+    this.root.appendChild(byMovesTitle);
+
+    const dayRec = getDayRecord(this.selectedDate);
+    this.root.appendChild(
+      this.byMovesCard(dayRec.byMoves, dayRec.date, `出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
+    );
+
+    const days30 = getRecentDays(30);
+    const solved30 = days30.reduce((a, r) => a + r.solved, 0);
+    const attempts30 = days30.reduce((a, r) => a + r.attempts, 0);
+    this.root.appendChild(
+      this.byMovesCard(
+        aggregateByMoves(days30),
+        '直近30日',
+        `出題 ${attempts30}問 / 解けた ${solved30}問`,
+      ),
+    );
+
+    // 解答カテゴリの凡例（日別・直近30日の両方に共通のため、まとめて下に1回だけ表示）
+    this.root.appendChild(this.categoryLegend());
   }
 
   private card(label: string, value: string, unit: string): HTMLElement {
@@ -168,31 +207,6 @@ export class StatsView {
     return wrap;
   }
 
-  private dayDetail(): HTMLElement {
-    const rec = getDayRecord(this.selectedDate);
-    const [y, mo, d] = rec.date.split('-').map(Number);
-    const wd = WEEKDAYS[new Date(y, mo - 1, d).getDay()];
-
-    const wrap = document.createElement('div');
-    wrap.className = 'day-detail';
-
-    const title = document.createElement('h3');
-    title.className = 'section-title';
-    title.textContent = `${rec.date}（${wd}）の内訳`;
-    wrap.appendChild(title);
-
-    const card = document.createElement('div');
-    card.className = 'day-detail-card';
-    const total = document.createElement('div');
-    total.className = 'day-detail-total';
-    total.textContent = `出題 ${rec.attempts}問 / 解けた ${rec.solved}問`;
-    card.appendChild(total);
-    wrap.appendChild(card);
-
-    wrap.appendChild(this.dayByMovesBreakdown(rec));
-    return wrap;
-  }
-
   // カテゴリ色の凡例（色とラベルのみ、件数は各バーのセグメントをタップして確認する）
   private categoryLegend(): HTMLElement {
     const legend = document.createElement('div');
@@ -208,21 +222,29 @@ export class StatsView {
     return legend;
   }
 
-  // 選択した日の手数別内訳を、4色の積み上げバーで表示する。
+  // 手数別内訳を、4色の積み上げバーで表示する（選択日／直近30日集計の両方で使う）。
   // 各色セグメントはタップでツールチップ（件数・割合）を表示する。
-  private dayByMovesBreakdown(rec: DayRecord): HTMLElement {
+  // タイトルはカレンダーと同様に呼び出し側で別要素として表示するため、ここではカードの中身のみを作る。
+  // periodLabel（日付／「直近30日」）は幅が異なるため、CSS側で幅を揃えて statsText の開始位置を揃える。
+  private byMovesCard(byMoves: Record<number, MoveTally>, periodLabel: string, statsText: string): HTMLElement {
     this.dismissBarTooltip();
 
     const wrap = document.createElement('div');
     wrap.className = 'bymoves';
-    const title = document.createElement('h3');
-    title.className = 'section-title';
-    title.textContent = `手数べつ（${rec.date}）`;
-    wrap.appendChild(title);
-    wrap.appendChild(this.categoryLegend());
+    const total = document.createElement('div');
+    total.className = 'day-detail-total';
+    const period = document.createElement('span');
+    period.className = 'day-detail-period';
+    period.textContent = periodLabel;
+    const stats = document.createElement('span');
+    stats.className = 'day-detail-stats';
+    stats.textContent = statsText;
+    total.appendChild(period);
+    total.appendChild(stats);
+    wrap.appendChild(total);
 
     for (const k of MOVE_COUNTS) {
-      const mv = rec.byMoves[k] ?? { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
+      const mv = byMoves[k] ?? { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
       const hintUsed = mv.hintUsed;
       const wrongSolved = Math.max(0, mv.solved - mv.firstTry - hintUsed);
       const answerViewed = Math.max(0, mv.attempts - mv.solved);
@@ -290,41 +312,5 @@ export class StatsView {
       window.clearTimeout(this.tooltipTimer);
       this.tooltipTimer = null;
     }
-  }
-
-  private byMovesSection(days: DayRecord[], titleText: string): HTMLElement {
-    const agg: Record<number, number> = {};
-    for (const k of MOVE_COUNTS) agg[k] = 0;
-    for (const r of days) {
-      for (const k of MOVE_COUNTS) agg[k] += r.byMoves[k]?.solved ?? 0;
-    }
-    const wrap = document.createElement('div');
-    wrap.className = 'bymoves';
-    const title = document.createElement('h3');
-    title.className = 'section-title';
-    title.textContent = titleText;
-    wrap.appendChild(title);
-    const max = Math.max(1, ...MOVE_COUNTS.map((k) => agg[k]));
-    for (const k of MOVE_COUNTS) {
-      const row = document.createElement('div');
-      row.className = 'bymoves-row';
-      const label = document.createElement('span');
-      label.className = 'bymoves-label';
-      label.textContent = `${k}手`;
-      const bar = document.createElement('div');
-      bar.className = 'bymoves-bar';
-      const fill = document.createElement('div');
-      fill.className = 'bymoves-fill';
-      fill.style.width = `${(agg[k] / max) * 100}%`;
-      bar.appendChild(fill);
-      const val = document.createElement('span');
-      val.className = 'bymoves-val';
-      val.textContent = `${agg[k]}問`;
-      row.appendChild(label);
-      row.appendChild(bar);
-      row.appendChild(val);
-      wrap.appendChild(row);
-    }
-    return wrap;
   }
 }
