@@ -57,8 +57,9 @@ describe('recordResult', () => {
     expect(rec.solved).toBe(2);
     expect(rec.firstTry).toBe(1);
     expect(rec.hintUsed).toBe(1);
-    expect(rec.byMoves[1]).toBe(1);
-    expect(rec.byMoves[3]).toBe(1);
+    expect(rec.byMoves[1]).toEqual({ attempts: 1, solved: 1, firstTry: 1, hintUsed: 0 });
+    expect(rec.byMoves[3]).toEqual({ attempts: 1, solved: 1, firstTry: 0, hintUsed: 1 });
+    expect(rec.byMoves[5]).toEqual({ attempts: 1, solved: 0, firstTry: 0, hintUsed: 0 });
   });
 });
 
