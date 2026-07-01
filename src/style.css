@@ -805,15 +805,6 @@ body {
   background: #1f8a4c;
 }
 
-.day-detail {
-  margin-top: 14px;
-}
-.day-detail-card {
-  background: var(--card);
-  color: var(--ink);
-  border-radius: 12px;
-  padding: 10px 12px;
-}
 .day-detail-total {
   font-weight: 800;
   font-size: 14px;
@@ -867,12 +858,6 @@ body {
   background: var(--card2);
   border-radius: 8px;
   overflow: hidden;
-}
-.bymoves-fill {
-  height: 100%;
-  background: var(--accent);
-  border-radius: 8px;
-  transition: width 0.3s;
 }
 .bymoves-bar-stacked {
   display: flex;
