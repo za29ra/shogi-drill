@@ -101,6 +101,9 @@ export class StatsView {
       '<span>多い</span>';
     this.root.appendChild(legend);
 
+    // 解答カテゴリの凡例（日別・直近30日の両方で共通のため、ここで1回だけ表示）
+    this.root.appendChild(this.categoryLegend());
+
     // 選択した日の内訳
     const dayRec = getDayRecord(this.selectedDate);
     this.root.appendChild(
@@ -112,7 +115,16 @@ export class StatsView {
     );
 
     // 手数別の集計（直近30日）
-    this.root.appendChild(this.byMovesBreakdown('手数べつ（直近30日）', aggregateByMoves(getRecentDays(30))));
+    const days30 = getRecentDays(30);
+    const solved30 = days30.reduce((a, r) => a + r.solved, 0);
+    const attempts30 = days30.reduce((a, r) => a + r.attempts, 0);
+    this.root.appendChild(
+      this.byMovesBreakdown(
+        '手数べつ（直近30日）',
+        aggregateByMoves(days30),
+        `出題 ${attempts30}問 / 解けた ${solved30}問`,
+      ),
+    );
   }
 
   private card(label: string, value: string, unit: string): HTMLElement {
@@ -229,7 +241,6 @@ export class StatsView {
       total.textContent = totalsText;
       wrap.appendChild(total);
     }
-    wrap.appendChild(this.categoryLegend());
 
     for (const k of MOVE_COUNTS) {
       const mv = byMoves[k] ?? { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
@@ -301,5 +312,4 @@ export class StatsView {
       this.tooltipTimer = null;
     }
   }
-
 }
