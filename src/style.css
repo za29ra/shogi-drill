@@ -17,7 +17,7 @@
   --good: #2e9e5b;
   --bad: #c0492e;
   --win: #e0a72b;
-  --seg-hint: #3f7fd1;
+  --seg-blue: #3f7fd1;
   /* 盤のサイズ。初期値（JS が領域に合わせて再計算して上書きする） */
   --bsz: min(90vw, 42vh, 520px);
   --pad-bottom: calc(64px + env(safe-area-inset-bottom, 0px));

@@ -17,10 +17,12 @@ const WEEKS = 6; // 6週間（42日 = 1ヶ月以上）を表示
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 // 解答カテゴリの色とラベル（一発正解／間違えたけど自力正解／ヒントを使って正解／答えを見た の順で固定）
+// 「間違えたけど自力正解」は「ヒントを使って正解」より自力度が高いとみなし、
+// 一発正解（緑）に近いトーンの色を割り当てる。
 const CATEGORY_COLORS = [
   { label: '一発正解（ノーミス）', color: 'var(--good)' },
-  { label: '間違えたけど自力正解', color: 'var(--accent2)' },
-  { label: 'ヒントを使って正解', color: 'var(--seg-hint)' },
+  { label: '間違えたけど自力正解', color: 'var(--seg-blue)' },
+  { label: 'ヒントを使って正解', color: 'var(--accent2)' },
   { label: '答えを見た', color: 'var(--ring-bg)' },
 ];
 
@@ -101,26 +103,25 @@ export class StatsView {
       '<span>多い</span>';
     this.root.appendChild(legend);
 
-    // 選択した日の内訳
+    // 手数べつ（選択した日／直近30日の2カードをまとめる見出しは1つだけ）
+    const byMovesTitle = document.createElement('h3');
+    byMovesTitle.className = 'section-title';
+    byMovesTitle.textContent = '手数べつ';
+    this.root.appendChild(byMovesTitle);
+
     const dayRec = getDayRecord(this.selectedDate);
-    const dayTitle = document.createElement('h3');
-    dayTitle.className = 'section-title';
-    dayTitle.textContent = `手数べつ（${dayRec.date}）`;
-    this.root.appendChild(dayTitle);
     this.root.appendChild(
-      this.byMovesCard(dayRec.byMoves, `出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
+      this.byMovesCard(dayRec.byMoves, `${dayRec.date} ・ 出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
     );
 
-    // 手数別の集計（直近30日）
     const days30 = getRecentDays(30);
     const solved30 = days30.reduce((a, r) => a + r.solved, 0);
     const attempts30 = days30.reduce((a, r) => a + r.attempts, 0);
-    const monthTitle = document.createElement('h3');
-    monthTitle.className = 'section-title';
-    monthTitle.textContent = '手数べつ（直近30日）';
-    this.root.appendChild(monthTitle);
     this.root.appendChild(
-      this.byMovesCard(aggregateByMoves(days30), `出題 ${attempts30}問 / 解けた ${solved30}問`),
+      this.byMovesCard(
+        aggregateByMoves(days30),
+        `直近30日 ・ 出題 ${attempts30}問 / 解けた ${solved30}問`,
+      ),
     );
 
     // 解答カテゴリの凡例（日別・直近30日の両方に共通のため、まとめて下に1回だけ表示）
