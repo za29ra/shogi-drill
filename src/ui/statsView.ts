@@ -101,9 +101,6 @@ export class StatsView {
       '<span>多い</span>';
     this.root.appendChild(legend);
 
-    // 解答カテゴリの凡例（日別・直近30日の両方で共通のため、ここで1回だけ表示）
-    this.root.appendChild(this.categoryLegend());
-
     // 選択した日の内訳
     const dayRec = getDayRecord(this.selectedDate);
     this.root.appendChild(
@@ -125,6 +122,9 @@ export class StatsView {
         `出題 ${attempts30}問 / 解けた ${solved30}問`,
       ),
     );
+
+    // 解答カテゴリの凡例（日別・直近30日の両方に共通のため、まとめて下に1回だけ表示）
+    this.root.appendChild(this.categoryLegend());
   }
 
   private card(label: string, value: string, unit: string): HTMLElement {
