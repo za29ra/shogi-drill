@@ -11,13 +11,49 @@ export interface Settings {
   showGuide: boolean; // 駒の移動ガイド表示
 }
 
-// 1日の成績。byMoves は手数別の正解数。
+// 手数別の内訳。
+export interface MoveTally {
+  attempts: number; // その手数の出題数
+  solved: number; // その手数で解けた数
+  firstTry: number; // その手数での一発正解数
+  hintUsed: number; // その手数でヒントを使って解けた数
+}
+
+// 1日の成績。byMoves は手数別の内訳。
 export interface DayRecord {
   date: string; // 'YYYY-MM-DD'
   solved: number; // 解けた問題数
   attempts: number; // 出題数
-  firstTry: number; // 一発正解数
-  byMoves: Record<number, number>; // 手数別 解けた数
+  firstTry: number; // 一発正解数（ノーミス・ヒントなし）
+  hintUsed?: number; // 解けた問題のうちヒントを使用した数
+  byMoves: Record<number, MoveTally>; // 手数別の内訳
+}
+
+function emptyMoveTally(): MoveTally {
+  return { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
+}
+
+// 旧形式（手数別の解けた数のみを持つ数値）を新形式に正規化する。
+// 旧データは内訳が不明なため、解けた数はすべて「一発正解」として代用表示する。
+function normalizeByMoves(raw: unknown): Record<number, MoveTally> {
+  const out: Record<number, MoveTally> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const key = Number(k);
+    if (!Number.isFinite(key)) continue;
+    if (typeof v === 'number') {
+      out[key] = { attempts: v, solved: v, firstTry: v, hintUsed: 0 };
+    } else if (v && typeof v === 'object') {
+      const o = v as Partial<MoveTally>;
+      out[key] = {
+        attempts: Number(o.attempts) || 0,
+        solved: Number(o.solved) || 0,
+        firstTry: Number(o.firstTry) || 0,
+        hintUsed: Number(o.hintUsed) || 0,
+      };
+    }
+  }
+  return out;
 }
 
 const SETTINGS_KEY = 'shogi-drill:settings:v1';
@@ -67,7 +103,8 @@ export function getHistory(): DayRecord[] {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw) as DayRecord[];
-    return Array.isArray(arr) ? arr : [];
+    if (!Array.isArray(arr)) return [];
+    return arr.map((r) => ({ ...r, byMoves: normalizeByMoves(r.byMoves) }));
   } catch {
     return [];
   }
@@ -82,26 +119,43 @@ function saveHistory(history: DayRecord[]): void {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
 }
 
+export function getDayRecord(date: string): DayRecord {
+  const rec = getHistory().find((r) => r.date === date);
+  return rec ?? { date, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} };
+}
+
 export function getTodayRecord(): DayRecord {
-  const t = todayStr();
-  const rec = getHistory().find((r) => r.date === t);
-  return rec ?? { date: t, solved: 0, attempts: 0, firstTry: 0, byMoves: {} };
+  return getDayRecord(todayStr());
 }
 
 // 1問の結果を記録する。
-export function recordResult(moves: number, solved: boolean, firstTry: boolean): DayRecord {
+export function recordResult(
+  moves: number,
+  solved: boolean,
+  firstTry: boolean,
+  hintUsed: boolean,
+): DayRecord {
   const history = getHistory();
   const t = todayStr();
   let rec = history.find((r) => r.date === t);
   if (!rec) {
-    rec = { date: t, solved: 0, attempts: 0, firstTry: 0, byMoves: {} };
+    rec = { date: t, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} };
     history.push(rec);
   }
   rec.attempts += 1;
+  const mv = rec.byMoves[moves] ?? (rec.byMoves[moves] = emptyMoveTally());
+  mv.attempts += 1;
   if (solved) {
     rec.solved += 1;
-    rec.byMoves[moves] = (rec.byMoves[moves] ?? 0) + 1;
-    if (firstTry) rec.firstTry += 1;
+    mv.solved += 1;
+    if (firstTry) {
+      rec.firstTry += 1;
+      mv.firstTry += 1;
+    }
+    if (hintUsed) {
+      rec.hintUsed = (rec.hintUsed ?? 0) + 1;
+      mv.hintUsed += 1;
+    }
   }
   saveHistory(history);
   return rec;
@@ -134,7 +188,7 @@ export function getRecentDays(days: number): DayRecord[] {
   d.setDate(d.getDate() - (days - 1));
   for (let i = 0; i < days; i++) {
     const ds = todayStr(d);
-    out.push(map.get(ds) ?? { date: ds, solved: 0, attempts: 0, firstTry: 0, byMoves: {} });
+    out.push(map.get(ds) ?? { date: ds, solved: 0, attempts: 0, firstTry: 0, hintUsed: 0, byMoves: {} });
     d.setDate(d.getDate() + 1);
   }
   return out;
@@ -200,7 +254,8 @@ export function parseBackup(raw: unknown): BackupPayload {
         solved: Number(r.solved) || 0,
         attempts: Number(r.attempts) || 0,
         firstTry: Number(r.firstTry) || 0,
-        byMoves: r.byMoves && typeof r.byMoves === 'object' ? r.byMoves : {},
+        hintUsed: Number(r.hintUsed) || 0,
+        byMoves: normalizeByMoves(r.byMoves),
       });
     }
   }

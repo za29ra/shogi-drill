@@ -2,7 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { mergeHistory, parseBackup, type DayRecord } from '../src/store/store.ts';
 
 function rec(date: string, solved: number, attempts: number): DayRecord {
-  return { date, solved, attempts, firstTry: solved, byMoves: { 1: solved } };
+  // byMoves はあえて旧形式（手数別の解けた数のみを持つ数値）にして、正規化の後方互換性を検証する。
+  return {
+    date,
+    solved,
+    attempts,
+    firstTry: solved,
+    byMoves: { 1: solved } as unknown as DayRecord['byMoves'],
+  };
 }
 
 describe('mergeHistory', () => {
@@ -26,6 +33,45 @@ describe('mergeHistory', () => {
     const b = [rec('2026-06-01', 3, 9)];
     const m = mergeHistory(a, b);
     expect(m[0].attempts).toBe(9);
+  });
+});
+
+describe('parseBackup with hintUsed', () => {
+  it('hintUsed を含むレコードを正しく取り込む', () => {
+    const out = parseBackup({
+      app: 'shogi-drill',
+      history: [{ date: '2026-06-01', solved: 3, attempts: 4, firstTry: 1, hintUsed: 2, byMoves: { 1: 3 } }],
+    });
+    expect(out.history[0].hintUsed).toBe(2);
+  });
+
+  it('hintUsed が欠けている旧形式のレコードは 0 として扱う', () => {
+    const out = parseBackup({ app: 'shogi-drill', history: [rec('2026-06-01', 2, 3)] });
+    expect(out.history[0].hintUsed).toBe(0);
+  });
+});
+
+describe('parseBackup: byMoves の後方互換正規化', () => {
+  it('旧形式（手数別の解けた数のみの数値）は「一発正解」扱いの内訳に変換される', () => {
+    const out = parseBackup({ app: 'shogi-drill', history: [rec('2026-06-01', 2, 3)] });
+    expect(out.history[0].byMoves[1]).toEqual({ attempts: 2, solved: 2, firstTry: 2, hintUsed: 0 });
+  });
+
+  it('新形式（オブジェクト）はそのまま数値化して取り込む', () => {
+    const out = parseBackup({
+      app: 'shogi-drill',
+      history: [
+        {
+          date: '2026-06-01',
+          solved: 2,
+          attempts: 3,
+          firstTry: 1,
+          hintUsed: 1,
+          byMoves: { 1: { attempts: 3, solved: 2, firstTry: 1, hintUsed: 1 } },
+        },
+      ],
+    });
+    expect(out.history[0].byMoves[1]).toEqual({ attempts: 3, solved: 2, firstTry: 1, hintUsed: 1 });
   });
 });
 

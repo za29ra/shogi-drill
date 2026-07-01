@@ -1,9 +1,27 @@
 // 成績画面。過去1ヶ月以上のカレンダー（ヒートマップ）と集計を表示する。
 
-import { getRecentDays, getStreak, getTodayRecord, getSettings, todayStr, totals, MOVE_COUNTS } from '../store/store.ts';
+import {
+  getDayRecord,
+  getRecentDays,
+  getStreak,
+  getTodayRecord,
+  getSettings,
+  todayStr,
+  totals,
+  MOVE_COUNTS,
+  type DayRecord,
+} from '../store/store.ts';
 
 const WEEKS = 6; // 6週間（42日 = 1ヶ月以上）を表示
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+// 解答カテゴリの色とラベル（一発正解／間違えたけど自力正解／ヒントを使って正解／答えを見た の順で固定）
+const CATEGORY_COLORS = [
+  { label: '一発正解（ノーミス）', color: 'var(--good)' },
+  { label: '間違えたけど自力正解', color: 'var(--accent2)' },
+  { label: 'ヒントを使って正解', color: 'var(--seg-hint)' },
+  { label: '答えを見た', color: 'var(--ring-bg)' },
+];
 
 function levelClass(solved: number): string {
   if (solved <= 0) return 'lv0';
@@ -15,6 +33,10 @@ function levelClass(solved: number): string {
 
 export class StatsView {
   private root: HTMLElement;
+  private selectedDate: string = todayStr();
+  private activeTooltip: HTMLElement | null = null;
+  private tooltipDismissHandler: (() => void) | null = null;
+  private tooltipTimer: number | null = null;
   constructor(root: HTMLElement) {
     this.root = root;
   }
@@ -24,6 +46,7 @@ export class StatsView {
   }
 
   render(): void {
+    this.dismissBarTooltip();
     this.root.innerHTML = '';
     this.root.classList.add('stats');
 
@@ -51,8 +74,11 @@ export class StatsView {
     this.root.appendChild(calTitle);
     this.root.appendChild(this.calendar());
 
+    // 選択した日の内訳
+    this.root.appendChild(this.dayDetail());
+
     // 手数別の集計（直近30日）
-    this.root.appendChild(this.byMovesSection());
+    this.root.appendChild(this.byMovesSection(getRecentDays(30), '手数べつ（直近30日）'));
 
     // 凡例
     const legend = document.createElement('div');
@@ -125,9 +151,16 @@ export class StatsView {
         const cell = document.createElement('div');
         cell.className = `cal-cell ${levelClass(solved)}`;
         if (ds === todayS) cell.classList.add('cal-today');
+        if (ds === this.selectedDate) cell.classList.add('cal-selected');
         if (cur > now) cell.classList.add('cal-future');
         cell.title = `${ds}: ${solved}問`;
         cell.textContent = String(cur.getDate());
+        if (cur <= now) {
+          cell.addEventListener('click', () => {
+            this.selectedDate = ds;
+            this.render();
+          });
+        }
         row.appendChild(cell);
       }
       wrap.appendChild(row);
@@ -135,18 +168,141 @@ export class StatsView {
     return wrap;
   }
 
-  private byMovesSection(): HTMLElement {
-    const days = getRecentDays(30);
+  private dayDetail(): HTMLElement {
+    const rec = getDayRecord(this.selectedDate);
+    const [y, mo, d] = rec.date.split('-').map(Number);
+    const wd = WEEKDAYS[new Date(y, mo - 1, d).getDay()];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'day-detail';
+
+    const title = document.createElement('h3');
+    title.className = 'section-title';
+    title.textContent = `${rec.date}（${wd}）の内訳`;
+    wrap.appendChild(title);
+
+    const card = document.createElement('div');
+    card.className = 'day-detail-card';
+    const total = document.createElement('div');
+    total.className = 'day-detail-total';
+    total.textContent = `出題 ${rec.attempts}問 / 解けた ${rec.solved}問`;
+    card.appendChild(total);
+    wrap.appendChild(card);
+
+    wrap.appendChild(this.dayByMovesBreakdown(rec));
+    return wrap;
+  }
+
+  // カテゴリ色の凡例（色とラベルのみ、件数は各バーのセグメントをタップして確認する）
+  private categoryLegend(): HTMLElement {
+    const legend = document.createElement('div');
+    legend.className = 'day-legend';
+    for (const seg of CATEGORY_COLORS) {
+      const item = document.createElement('div');
+      item.className = 'day-legend-item';
+      item.innerHTML =
+        `<i class="day-legend-swatch" style="background:${seg.color}"></i>` +
+        `<span class="day-legend-label">${seg.label}</span>`;
+      legend.appendChild(item);
+    }
+    return legend;
+  }
+
+  // 選択した日の手数別内訳を、4色の積み上げバーで表示する。
+  // 各色セグメントはタップでツールチップ（件数・割合）を表示する。
+  private dayByMovesBreakdown(rec: DayRecord): HTMLElement {
+    this.dismissBarTooltip();
+
+    const wrap = document.createElement('div');
+    wrap.className = 'bymoves';
+    const title = document.createElement('h3');
+    title.className = 'section-title';
+    title.textContent = `手数べつ（${rec.date}）`;
+    wrap.appendChild(title);
+    wrap.appendChild(this.categoryLegend());
+
+    for (const k of MOVE_COUNTS) {
+      const mv = rec.byMoves[k] ?? { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
+      const hintUsed = mv.hintUsed;
+      const wrongSolved = Math.max(0, mv.solved - mv.firstTry - hintUsed);
+      const answerViewed = Math.max(0, mv.attempts - mv.solved);
+      const segValues = [mv.firstTry, wrongSolved, hintUsed, answerViewed];
+
+      const row = document.createElement('div');
+      row.className = 'bymoves-row';
+      const label = document.createElement('span');
+      label.className = 'bymoves-label';
+      label.textContent = `${k}手`;
+      const bar = document.createElement('div');
+      bar.className = 'bymoves-bar bymoves-bar-stacked';
+      if (mv.attempts > 0) {
+        CATEGORY_COLORS.forEach((cat, i) => {
+          const value = segValues[i];
+          if (value <= 0) return;
+          const seg = document.createElement('div');
+          seg.className = 'bar-seg';
+          seg.style.width = `${(value / mv.attempts) * 100}%`;
+          seg.style.background = cat.color;
+          const pct = Math.round((value / mv.attempts) * 100);
+          seg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.showBarTooltip(seg, `${cat.label}: ${value}問（${pct}%）`);
+          });
+          bar.appendChild(seg);
+        });
+      }
+      const val = document.createElement('span');
+      val.className = 'bymoves-val';
+      val.textContent = `${mv.attempts}問`;
+      row.appendChild(label);
+      row.appendChild(bar);
+      row.appendChild(val);
+      wrap.appendChild(row);
+    }
+    return wrap;
+  }
+
+  private showBarTooltip(anchor: HTMLElement, text: string): void {
+    this.dismissBarTooltip();
+    const tip = document.createElement('div');
+    tip.className = 'bar-tooltip';
+    tip.textContent = text;
+    document.body.appendChild(tip);
+    const rect = anchor.getBoundingClientRect();
+    tip.style.left = `${rect.left + rect.width / 2}px`;
+    tip.style.top = `${rect.top}px`;
+    this.activeTooltip = tip;
+    this.tooltipDismissHandler = () => this.dismissBarTooltip();
+    document.addEventListener('click', this.tooltipDismissHandler, { once: true });
+    this.tooltipTimer = window.setTimeout(() => this.dismissBarTooltip(), 3000);
+  }
+
+  private dismissBarTooltip(): void {
+    if (this.activeTooltip) {
+      this.activeTooltip.remove();
+      this.activeTooltip = null;
+    }
+    if (this.tooltipDismissHandler) {
+      document.removeEventListener('click', this.tooltipDismissHandler);
+      this.tooltipDismissHandler = null;
+    }
+    if (this.tooltipTimer !== null) {
+      window.clearTimeout(this.tooltipTimer);
+      this.tooltipTimer = null;
+    }
+  }
+
+  private byMovesSection(days: DayRecord[], titleText: string): HTMLElement {
     const agg: Record<number, number> = {};
     for (const k of MOVE_COUNTS) agg[k] = 0;
     for (const r of days) {
-      for (const k of MOVE_COUNTS) agg[k] += r.byMoves[k] ?? 0;
+      for (const k of MOVE_COUNTS) agg[k] += r.byMoves[k]?.solved ?? 0;
     }
     const wrap = document.createElement('div');
     wrap.className = 'bymoves';
     const title = document.createElement('h3');
     title.className = 'section-title';
-    title.textContent = '手数べつ（直近30日）';
+    title.textContent = titleText;
     wrap.appendChild(title);
     const max = Math.max(1, ...MOVE_COUNTS.map((k) => agg[k]));
     for (const k of MOVE_COUNTS) {

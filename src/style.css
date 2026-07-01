@@ -17,6 +17,7 @@
   --good: #2e9e5b;
   --bad: #c0492e;
   --win: #e0a72b;
+  --seg-hint: #3f7fd1;
   /* 盤のサイズ。初期値（JS が領域に合わせて再計算して上書きする） */
   --bsz: min(90vw, 42vh, 520px);
   --pad-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
@@ -741,6 +742,7 @@ body {
   font-size: 11px;
   color: #5b4a33;
   background: var(--card2);
+  cursor: pointer;
 }
 .cal-cell.lv0 {
   background: #e7dcc4;
@@ -766,6 +768,11 @@ body {
 }
 .cal-cell.cal-future {
   opacity: 0.35;
+  cursor: default;
+}
+.cal-cell.cal-selected {
+  outline: 3px solid var(--accent);
+  outline-offset: -2px;
 }
 .heat-legend {
   display: flex;
@@ -796,6 +803,40 @@ body {
 }
 .heat.lv4 {
   background: #1f8a4c;
+}
+
+.day-detail {
+  margin-top: 14px;
+}
+.day-detail-card {
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.day-detail-total {
+  font-weight: 800;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+.day-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 4px 0 10px;
+}
+.day-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.day-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  flex: none;
+  display: inline-block;
 }
 
 .bymoves {
@@ -833,11 +874,33 @@ body {
   border-radius: 8px;
   transition: width 0.3s;
 }
+.bymoves-bar-stacked {
+  display: flex;
+}
+.bar-seg {
+  height: 100%;
+  cursor: pointer;
+  transition: width 0.3s;
+}
 .bymoves-val {
   width: 44px;
   text-align: right;
   font-size: 13px;
   font-weight: 700;
+}
+
+.bar-tooltip {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 8px));
+  background: var(--bg2);
+  color: #f2e6cc;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  white-space: nowrap;
+  z-index: 60;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
 }
 
 /* ===== 設定画面 ===== */
