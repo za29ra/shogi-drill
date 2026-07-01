@@ -806,9 +806,17 @@ body {
 }
 
 .day-detail-total {
+  display: flex;
+  align-items: baseline;
   font-weight: 800;
   font-size: 14px;
   margin-bottom: 8px;
+}
+.day-detail-period {
+  flex: 0 0 7em;
+}
+.day-detail-stats {
+  flex: 1;
 }
 .day-legend {
   display: flex;

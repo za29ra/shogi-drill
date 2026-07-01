@@ -111,7 +111,7 @@ export class StatsView {
 
     const dayRec = getDayRecord(this.selectedDate);
     this.root.appendChild(
-      this.byMovesCard(dayRec.byMoves, `${dayRec.date} ・ 出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
+      this.byMovesCard(dayRec.byMoves, dayRec.date, `出題 ${dayRec.attempts}問 / 解けた ${dayRec.solved}問`),
     );
 
     const days30 = getRecentDays(30);
@@ -120,7 +120,8 @@ export class StatsView {
     this.root.appendChild(
       this.byMovesCard(
         aggregateByMoves(days30),
-        `直近30日 ・ 出題 ${attempts30}問 / 解けた ${solved30}問`,
+        '直近30日',
+        `出題 ${attempts30}問 / 解けた ${solved30}問`,
       ),
     );
 
@@ -224,17 +225,23 @@ export class StatsView {
   // 手数別内訳を、4色の積み上げバーで表示する（選択日／直近30日集計の両方で使う）。
   // 各色セグメントはタップでツールチップ（件数・割合）を表示する。
   // タイトルはカレンダーと同様に呼び出し側で別要素として表示するため、ここではカードの中身のみを作る。
-  private byMovesCard(byMoves: Record<number, MoveTally>, totalsText?: string): HTMLElement {
+  // periodLabel（日付／「直近30日」）は幅が異なるため、CSS側で幅を揃えて statsText の開始位置を揃える。
+  private byMovesCard(byMoves: Record<number, MoveTally>, periodLabel: string, statsText: string): HTMLElement {
     this.dismissBarTooltip();
 
     const wrap = document.createElement('div');
     wrap.className = 'bymoves';
-    if (totalsText) {
-      const total = document.createElement('div');
-      total.className = 'day-detail-total';
-      total.textContent = totalsText;
-      wrap.appendChild(total);
-    }
+    const total = document.createElement('div');
+    total.className = 'day-detail-total';
+    const period = document.createElement('span');
+    period.className = 'day-detail-period';
+    period.textContent = periodLabel;
+    const stats = document.createElement('span');
+    stats.className = 'day-detail-stats';
+    stats.textContent = statsText;
+    total.appendChild(period);
+    total.appendChild(stats);
+    wrap.appendChild(total);
 
     for (const k of MOVE_COUNTS) {
       const mv = byMoves[k] ?? { attempts: 0, solved: 0, firstTry: 0, hintUsed: 0 };
